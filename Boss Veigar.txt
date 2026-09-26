@@ -1,0 +1,109 @@
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+class Character {
+  protected:
+    string name;
+    int hp, damage;
+    bool isAlive = true;
+  public:
+    Character(string name, int hp, int damage) : name(name), hp(hp), damage(damage) {}
+    virtual void attack(Character*& a, int turn) = 0;
+    void setHp(int hp) {this->hp = hp; if(this->hp<=0) isAlive = false;}
+    void setDamage(int dam) {damage = dam;}
+    bool getState() const {return isAlive;}
+    int getHp() const {return hp;}
+    int getDamage() const {return damage;}
+    string getName() const {return name;}
+    virtual void setStunned(bool a) {}
+    virtual void setTaunted(bool a) {}
+    virtual bool getTaunted() const {}
+    virtual bool getStunned() const {}
+    virtual ~Character() {};
+};
+class Veigar : public Character {
+  private:
+    bool isStunned = false, isTaunted = false;
+  public:
+    Veigar(string name, int hp, int damage) : Character(name, hp, damage) {}
+    void attack(Character*& a, int turn) override {
+      if(turn%2==0) a->setHp(a->getHp() - damage*3);
+      else a->setHp(a->getHp() - damage);
+    }
+    void setStunned(bool a) override {isStunned = a;}
+    void setTaunted(bool a) override {isTaunted = a;}
+    bool getTaunted() const override {return isTaunted;}
+    bool getStunned() const override {return isStunned;}
+};
+class Rangers : public Character {
+  public:
+    Rangers(string name, int hp, int damage) : Character(name, hp, damage) {}
+    void attack(Character*& a, int turn) override {
+      if(getName()=="red") a->setHp(a->getHp()-damage);
+      else if(getName()=="blue") a->setHp(a->getHp()-damage);
+      else if(getName()=="yellow") {
+        a->setHp(a->getHp()-damage);
+        if(turn%4==0) a->setStunned(true);
+      }
+      else if(getName()=="white") {
+        a->setHp(a->getHp()-damage);
+        if(turn%3==0) a->setDamage(a->getDamage()-10);
+      }
+      else if(getName()=="black") {
+        a->setHp(a->getHp()-damage);
+        if(turn%2==0) a->setTaunted(true);
+      }
+    }
+};
+void gameLoop(vector<Character*>& ranger, Character*& boss, int maxTurns) {
+  int t=0;
+  for(t; t<maxTurns; ++t) {
+    for(size_t i=0; i<5; ++i) {
+      if(ranger[i]->getState()) ranger[i]->attack(boss, t);
+      if(!boss->getState()) {
+        cout<<"WIN";
+        return;
+      }
+    }
+    if(boss->getStunned()) {
+      boss->setStunned(false);
+      continue;
+    }
+    if(boss->getTaunted()) {
+      for(size_t i=0; i<5; ++i) boss->attack(ranger[4], t);
+      boss->setTaunted(false);
+    }
+    else {
+      for(size_t i=0; i<5; ++i) boss->attack(ranger[i], t);
+    }
+    bool lose = true;
+    for(size_t i=0; i<5; ++i) {
+      if(ranger[i]->getState()) {
+        lose = false;
+        break;
+      }
+    }
+    if(lose) {
+      cout<<"LOSE";
+      return;
+    }
+    
+  }
+  if(t==maxTurns) cout<<"DRAW";
+}
+int main() 
+{
+    vector<Character*> ranger = {
+      new Rangers("red", 200, 20),
+      new Rangers("blue", 300, 15),
+      new Rangers("yellow", 200, 5),
+      new Rangers("white", 200, 10),
+      new Rangers("black", 400, 10),
+    };
+    Character* boss = new Veigar("veigar", 1100, 50);
+    gameLoop(ranger, boss, 10);
+    for(Character*& a : ranger) delete a;
+    delete boss;
+    return 0;
+}
